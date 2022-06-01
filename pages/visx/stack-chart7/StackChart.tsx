@@ -73,12 +73,13 @@ export default function StackChart({
 
     const xScale = scaleTime({
         domain: initialDomain,
-        range: [0, xMax]
+        // range: [0, xMax]
+        range: [margin.left, xMax + margin.left]
     });
 
     const yScale = scaleLinear({
         domain: [0, yMax],
-        range: [yMax, 0],
+        range: [yMax, margin.top],
         zero: true,
     });
 
@@ -92,13 +93,12 @@ export default function StackChart({
 
         const newDomain = scale
             .range()
-            .map(r => {
-                return scale.invert((r - zoom.transformMatrix.translateX) / zoom.transformMatrix.scaleX)})
+            .map(r => scale.invert((r - zoom.transformMatrix.translateX) / zoom.transformMatrix.scaleX))
         return scale.copy().domain(newDomain)
     }
 
     return width < 10 ? null : (
-        <div style={{border: '1px solid black', marginTop: '20px'}}>
+        <div style={{border: '1px solid black', marginTop: '20px', marginLeft: margin.left}}>
             <Zoom
                 width={width}
                 height={height}
@@ -132,22 +132,24 @@ export default function StackChart({
                     return (
                         // @ts-ignore TS is bitching about the ref
                         <svg width={width} height={height} ref={zoom.containerRef}>
-                            <g  transform={`translate(0, ${margin.top})`}>
+                            {/*<g transform={`translate(${margin.left}, ${margin.top})`}>*/}
+                            <g>
                                 <RectClipPath
                                     id="zoom-clip"
-                                    // x={margin.zero}
+                                    // x={margin.left}
                                     y={margin.bottom}
-                                    width={xMax}
+                                    width={xMax + margin.left}
                                     height={yMax}/>
                                 <AxisLeft
                                     scale={yScale}
                                     label={"Temperature"}
-                                    // left={margin.left}
+                                    left={margin.left}
                                 />
                                 <AxisBottom
                                     scale={rescaledXAxis}
                                     top={height - margin.top - margin.bottom}
                                     // left={margin.left}
+
                                 />
                                 <GradientPinkBlue id="stacked-pink-blue"/>
                                 <AreaStack
@@ -171,6 +173,7 @@ export default function StackChart({
                                                     if (events) alert(`${stack.key}`);
                                                 }}
                                                 clipPath="url(#zoom-clip)"
+                                                // transform={`translate(${margin.left}, 0)`}
                                             />
                                         ))
                                     }
@@ -185,10 +188,12 @@ export default function StackChart({
                                     // transform={'translate(0, 0)'}
                                 />
                                 {tooltipData && <Line
-                                    from={{x: tooltipLeft  || 0 - margin.left, y: 0}}
-                                    to={{x: tooltipLeft || 0 - margin.right, y: yMax}}
+                                    from={{x: (tooltipLeft || 0), y: 0}}
+                                    to={{x: (tooltipLeft || 0), y: yMax}}
+                                    // from={{x: (tooltipLeft || 0) - margin.left, y: 0}}
+                                    // to={{x: (tooltipLeft || 0) - margin.left, y: yMax}}
                                     stroke={'black'}
-                                    strokeWidth={2}
+                                    strokeWidth={1}
                                     pointerEvents="none"
                                     strokeDasharray="5,2"
                                     // transform={"translate(-50, 0)"}
