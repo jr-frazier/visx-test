@@ -135,7 +135,7 @@ export default function StackChart({
                             <g  transform={`translate(0, ${margin.top})`}>
                                 <RectClipPath
                                     id="zoom-clip"
-                                    x={margin.zero}
+                                    // x={margin.zero}
                                     y={margin.bottom}
                                     width={xMax}
                                     height={yMax}/>
@@ -171,7 +171,6 @@ export default function StackChart({
                                                     if (events) alert(`${stack.key}`);
                                                 }}
                                                 clipPath="url(#zoom-clip)"
-                                                transform={'translate(50, 0)'}
                                             />
                                         ))
                                     }
@@ -183,7 +182,7 @@ export default function StackChart({
                                     rx={0}
                                     onMouseMove={handleTooltip}
                                     onMouseLeave={() => hideTooltip()}
-                                    transform={'translate(50, 0)'}
+                                    // transform={'translate(0, 0)'}
                                 />
                                 {tooltipData && <Line
                                     from={{x: tooltipLeft  || 0 - margin.left, y: 0}}
