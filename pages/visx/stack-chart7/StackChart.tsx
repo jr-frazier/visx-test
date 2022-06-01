@@ -3,7 +3,7 @@ import {AreaStack, Line} from '@visx/shape';
 import {curveCardinal, curveStepAfter} from '@visx/curve'
 import {GradientPinkBlue} from '@visx/gradient';
 import {TooltipWithBounds, useTooltip} from '@visx/tooltip';
-import {scaleLinear, scaleUtc} from '@visx/scale';
+import {scaleLinear, scaleUtc, scaleTime} from '@visx/scale';
 import {timeParse} from 'd3-time-format';
 import {AxisBottom, AxisLeft} from '@visx/axis';
 import {localPoint} from '@visx/event';
@@ -61,10 +61,9 @@ export default function StackChart({
                                        events = false
                                    }: Props) {
     // bounds
-    const [margin, setMargin] = React.useState({top: 50, right: 50, bottom: 50, left: 50})
+    const margin = {top: 50, right: 50, bottom: 50, left: 50, zero: 0}
     const yMax = height - margin.top - margin.bottom;
-    const xMax = width - margin.right - margin.left;
-
+    const xMax = width - 100;
     const {showTooltip, hideTooltip, tooltipData, tooltipLeft, tooltipTop} = useTooltip();
     const bisectDate = bisector((d: Data) => new Date(d.date)).left;
     const getTempValue1 = data ? (d: Data) => d.temp1 : () => 0;
@@ -72,7 +71,7 @@ export default function StackChart({
     const colors = ["red", "orange", "yellow", "green", "blue"].reverse()
     const initialDomain = [Math.min(...data.map(getDate)), Math.max(...data.map(getDate))]
 
-    const xScale = scaleUtc({
+    const xScale = scaleTime({
         domain: initialDomain,
         range: [0, xMax]
     });
@@ -91,11 +90,10 @@ export default function StackChart({
             isDragging: boolean;
         }) {
 
-        console.log("matrix", zoom.transformMatrix)
         const newDomain = scale
             .range()
             .map(r => {
-                return scale.invert((r - zoom.transformMatrix.translateX + margin.left) / zoom.transformMatrix.scaleX - margin.left)})
+                return scale.invert((r - zoom.transformMatrix.translateX) / zoom.transformMatrix.scaleX)})
         return scale.copy().domain(newDomain)
     }
 
@@ -133,23 +131,28 @@ export default function StackChart({
 
                     return (
                         // @ts-ignore TS is bitching about the ref
-                        <svg width={width - margin.right} height={height} ref={zoom.containerRef}>
-                            <g transform={`translate(${margin.left}, ${margin.top})`}>
-                                <RectClipPath id="zoom-clip" x={margin.left} y={margin.bottom} width={xMax} height={yMax}/>
+                        <svg width={width} height={height} ref={zoom.containerRef}>
+                            <g  transform={`translate(0, ${margin.top})`}>
+                                <RectClipPath
+                                    id="zoom-clip"
+                                    x={margin.zero}
+                                    y={margin.bottom}
+                                    width={xMax}
+                                    height={yMax}/>
                                 <AxisLeft
                                     scale={yScale}
                                     label={"Temperature"}
-                                    left={margin.left}
+                                    // left={margin.left}
                                 />
                                 <AxisBottom
                                     scale={rescaledXAxis}
                                     top={height - margin.top - margin.bottom}
-                                    left={margin.left / 2}
+                                    // left={margin.left}
                                 />
                                 <GradientPinkBlue id="stacked-pink-blue"/>
                                 <AreaStack
-                                    top={margin.top}
-                                    left={margin.left}
+                                    // top={margin.top}
+                                    // left={100000000000000000}
                                     keys={keys}
                                     data={data}
                                     x={(d) => rescaledXAxis(getDate(d.data))}
@@ -168,25 +171,28 @@ export default function StackChart({
                                                     if (events) alert(`${stack.key}`);
                                                 }}
                                                 clipPath="url(#zoom-clip)"
+                                                transform={'translate(50, 0)'}
                                             />
                                         ))
                                     }
                                 </AreaStack>
                                 <rect
-                                    width={xMax - margin.left}
+                                    width={xMax}
                                     height={yMax}
                                     fill="transparent"
                                     rx={0}
                                     onMouseMove={handleTooltip}
                                     onMouseLeave={() => hideTooltip()}
+                                    transform={'translate(50, 0)'}
                                 />
                                 {tooltipData && <Line
-                                    from={{x: tooltipLeft || 0 - margin.left, y: 0}}
+                                    from={{x: tooltipLeft  || 0 - margin.left, y: 0}}
                                     to={{x: tooltipLeft || 0 - margin.right, y: yMax}}
                                     stroke={'black'}
                                     strokeWidth={2}
                                     pointerEvents="none"
                                     strokeDasharray="5,2"
+                                    // transform={"translate(-50, 0)"}
                                 />}
                             </g>
                         </svg>)
@@ -212,18 +218,6 @@ export default function StackChart({
                             </div>
                         </div>
                     </TooltipWithBounds>
-                    {/* <Tooltip
-                        top={innerHeight + margin.top - 14}
-                        left={tooltipLeft}
-                        style={{
-                            ...defaultStyles,
-                            minWidth: 72,
-                            textAlign: 'center',
-                            transform: 'translateX(-50%)',
-                        }}
-                    >
-                        {tooltipData}
-                    </Tooltip> */}
                 </div>
             )}
         </div>
