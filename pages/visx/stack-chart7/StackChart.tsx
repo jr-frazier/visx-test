@@ -1,6 +1,6 @@
 import React from 'react';
 import {AreaStack, Line} from '@visx/shape';
-import {curveCardinal, curveStepAfter} from '@visx/curve'
+import {curveCardinal} from '@visx/curve'
 import {GradientPinkBlue} from '@visx/gradient';
 import {TooltipWithBounds, useTooltip} from '@visx/tooltip';
 import {scaleLinear, scaleUtc, scaleTime} from '@visx/scale';
@@ -65,6 +65,7 @@ export default function StackChart({
     const yMax = height - margin.top - margin.bottom;
     const xMax = width - 100;
     const {showTooltip, hideTooltip, tooltipData, tooltipLeft, tooltipTop} = useTooltip();
+    // const bisectDate = bisector((date: Data) => new Date(d.date)).left;
     const bisectDate = bisector((d: Data) => new Date(d.date)).left;
     const getTempValue1 = data ? (d: Data) => d.temp1 : () => 0;
     const getTempValue2 = data ? (d: Data) => d.temp2 : () => 0;
@@ -73,36 +74,36 @@ export default function StackChart({
 
     const xScale = scaleTime({
         domain: initialDomain,
-        range: [0, xMax]
+        // range: [0, xMax]
+        range: [margin.left, xMax]
     });
 
     const yScale = scaleLinear({
         domain: [0, yMax],
-        range: [yMax, 0],
+        range: [yMax, margin.top],
         zero: true,
     });
 
     function rescaleXAxis(scale: ScaleTime<number, number, never>, zoom: ProvidedZoom<Element> & {
-            initialTransformMatrix: TransformMatrix;
-            transformMatrix: TransformMatrix;
-            // margin = {top: 50, right: 50, bottom: 50, left: 50},
-            // margin = {top: 50, right: 50, bottom: 50, left: 50},
-            isDragging: boolean;
-        }) {
+        initialTransformMatrix: TransformMatrix;
+        transformMatrix: TransformMatrix;
+        // margin = {top: 50, right: 50, bottom: 50, left: 50},
+        // margin = {top: 50, right: 50, bottom: 50, left: 50},
+        isDragging: boolean;
+    }) {
 
         const newDomain = scale
             .range()
-            .map(r => {
-                return scale.invert((r - zoom.transformMatrix.translateX) / zoom.transformMatrix.scaleX)})
+            .map(r => scale.invert((r - zoom.transformMatrix.translateX) / zoom.transformMatrix.scaleX))
         return scale.copy().domain(newDomain)
     }
 
     return width < 10 ? null : (
-        <div style={{border: '1px solid black', marginTop: '20px'}}>
+        <div style={{border: '1px solid black', marginTop: '20px', marginLeft: margin.left}}>
             <Zoom
                 width={width}
                 height={height}
-                scaleXMin={0.5}
+                scaleXMin={1}
                 scaleXMax={4}
             >
                 {(zoom) => {
@@ -114,6 +115,8 @@ export default function StackChart({
                         }
                         const {x} = localPoint(event) || {x: 0};
                         const x0 = rescaledXAxis.invert(x);
+                        const time = timeFormat('%Y-%m-%d')(x0)
+                        const dateArray = data.map((d: Data) => d.date)
                         const index = bisectDate(data, x0, 1);
                         const d0 = data[index - 1];
                         const d1 = data[index];
@@ -121,8 +124,10 @@ export default function StackChart({
                         if (d1 && getDate(d)) {
                             d = x0.valueOf() - getDate(d0).valueOf() > getDate(d1).valueOf() - x0.valueOf() ? d1 : d0;
                         }
+
+
                         showTooltip({
-                            tooltipData: timeFormat('%c')(x0),
+                            tooltipData: {date: timeFormat("%c")(x0)},
                             tooltipLeft: x,
                             // tooltipTop: [getTempValue1(d0), getTempValue2(d1)],
                             tooltipTop: getTempValue1(d0),
@@ -132,33 +137,33 @@ export default function StackChart({
                     return (
                         // @ts-ignore TS is bitching about the ref
                         <svg width={width} height={height} ref={zoom.containerRef}>
-                            <g  transform={`translate(0, ${margin.top})`}>
+                            {/*<g transform={`translate(${margin.left}, ${margin.top})`}>*/}
+                            <g>
                                 <RectClipPath
                                     id="zoom-clip"
-                                    // x={margin.zero}
+                                    x={margin.left}
                                     y={margin.bottom}
                                     width={xMax}
                                     height={yMax}/>
                                 <AxisLeft
                                     scale={yScale}
                                     label={"Temperature"}
-                                    // left={margin.left}
+                                    left={margin.left}
                                 />
                                 <AxisBottom
                                     scale={rescaledXAxis}
                                     top={height - margin.top - margin.bottom}
-                                    // left={margin.left}
+
+
                                 />
                                 <GradientPinkBlue id="stacked-pink-blue"/>
                                 <AreaStack
-                                    // top={margin.top}
-                                    // left={100000000000000000}
                                     keys={keys}
                                     data={data}
                                     x={(d) => rescaledXAxis(getDate(d.data))}
                                     y0={(d) => yScale(getY0(d)) ?? 0}
                                     y1={(d) => yScale(getY1(d)) ?? 0}
-                                    curve={curveStepAfter}
+                                    curve={curveCardinal}
                                 >
                                     {({stacks, path}) =>
                                         stacks.map((stack, i) => (
@@ -171,24 +176,25 @@ export default function StackChart({
                                                     if (events) alert(`${stack.key}`);
                                                 }}
                                                 clipPath="url(#zoom-clip)"
+                                                // transform={`translate(${margin.left}, 0)`}
                                             />
                                         ))
                                     }
                                 </AreaStack>
                                 <rect
-                                    width={xMax}
-                                    height={yMax}
+                                    width={xMax - margin.left}
+                                    height={yMax - margin.top}
                                     fill="transparent"
                                     rx={0}
                                     onMouseMove={handleTooltip}
                                     onMouseLeave={() => hideTooltip()}
-                                    // transform={'translate(0, 0)'}
+                                    transform={`translate(${margin.left}, ${margin.top})`}
                                 />
                                 {tooltipData && <Line
-                                    from={{x: tooltipLeft  || 0 - margin.left, y: 0}}
-                                    to={{x: tooltipLeft || 0 - margin.right, y: yMax}}
+                                    from={{x: (tooltipLeft || 0), y: margin.top}}
+                                    to={{x: (tooltipLeft || 0), y: yMax}}
                                     stroke={'black'}
-                                    strokeWidth={2}
+                                    strokeWidth={1}
                                     pointerEvents="none"
                                     strokeDasharray="5,2"
                                     // transform={"translate(-50, 0)"}
@@ -207,10 +213,10 @@ export default function StackChart({
                     >
                         <div style={{display: "flex", flexDirection: "column", gap: "5px"}}>
                             <div>
-                                Date: {tooltipData}
+                                Date: {tooltipData.date}
                             </div>
                             <div>
-                                temp1: {tooltipTop}
+                                temp1: {tooltipData.temp1}
                             </div>
                             <div>
                                 temp2: {tooltipTop}
