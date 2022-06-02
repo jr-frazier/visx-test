@@ -9,7 +9,8 @@ import {AxisBottom, AxisLeft} from '@visx/axis';
 import {localPoint} from '@visx/event';
 import {bisector} from 'd3-array';
 import {ScaleTime, timeFormat} from 'd3';
-import {Zoom} from '@visx/zoom';
+// import {Zoom} from '@visx/zoom';
+import Zoom from './Zoom'
 import {RectClipPath} from '@visx/clip-path';
 import {SeriesPoint} from "@visx/shape/lib/types";
 import {EventType} from '@visx/event/lib/types';
@@ -46,8 +47,12 @@ const parseDate = timeParse('%Y-%m-%d');
 export const background = 'blue';
 
 const getDate = (d: Data) => (parseDate(d.date) || 0).valueOf();
-const getY0 = (d: SeriesPoint<Data>) => d[0] / 1;
-const getY1 = (d: SeriesPoint<Data>) => d[1] / 1;
+const getY0 = (d: SeriesPoint<Data>) => d[0];
+const getY1 = (d: SeriesPoint<Data>) => d[1];
+const colors = ["red", "orange", "yellow", "green", "blue"].reverse()
+const initialDomain = [Math.min(...data.map(getDate)), Math.max(...data.map(getDate))]
+const bisectDate = bisector((d: Data) => new Date(d.date)).left;
+const getTempValue1 = data ? (d: Data) => d.temp1 : () => 0;
 
 interface Props {
     width: number;
@@ -55,44 +60,34 @@ interface Props {
     events?: boolean;
 }
 
-export default function StackChart({
-                                       width,
-                                       height,
-                                       // margin = {top: 50, right: 50, bottom: 50, left: 50},
-                                       events = false
-                                   }: Props) {
+export default function StackChart({width, height, events = false}: Props) {
     // bounds
     const margin = {top: 50, right: 50, bottom: 50, left: 50, zero: 0}
+
+    // calculate the x- and y- max (in pixels) based on the width/height and the margins
     const yMax = height - margin.top - margin.bottom;
-    const xMax = width - 100;
+    const xMax = width - margin.right - margin.left;
+
     const {showTooltip, hideTooltip, tooltipData, tooltipLeft, tooltipTop} = useTooltip();
-    const bisectDate = bisector((d: Data) => new Date(d.date)).left;
-    const getTempValue1 = data ? (d: Data) => d.temp1 : () => 0;
-    const getTempValue2 = data ? (d: Data) => d.temp2 : () => 0;
-    const colors = ["red", "orange", "yellow", "green", "blue"].reverse()
-    const initialDomain = [Math.min(...data.map(getDate)), Math.max(...data.map(getDate))]
 
     const xScale = scaleTime({
         domain: initialDomain,
         range: [0, xMax]
-        // range: [margin.left, xMax + margin.left]
     });
 
     const yScale = scaleLinear({
         domain: [0, yMax],
         range: [yMax, 0],
-        // range: [yMax, margin.top],
         zero: true,
     });
 
-    function rescaleXAxis(scale: ScaleTime<number, number, never>, zoom: ProvidedZoom<Element> & {
-            initialTransformMatrix: TransformMatrix;
-            transformMatrix: TransformMatrix;
-            // margin = {top: 50, right: 50, bottom: 50, left: 50},
-            // margin = {top: 50, right: 50, bottom: 50, left: 50},
-            isDragging: boolean;
-        }) {
+    type Shit = {
+        initialTransformMatrix: TransformMatrix;
+        transformMatrix: TransformMatrix;
+        isDragging: boolean;
+    }
 
+    function rescaleXAxis(scale: ScaleTime<number, number, never>, zoom: ProvidedZoom<Element> & Shit) {
         const newDomain = scale
             .range()
             .map(r => scale.invert((r - zoom.transformMatrix.translateX) / zoom.transformMatrix.scaleX))
@@ -106,11 +101,12 @@ export default function StackChart({
                 height={height}
                 scaleXMin={0.5}
                 scaleXMax={4}
+                left={margin.left}
             >
                 {(zoom) => {
                     const rescaledXAxis = rescaleXAxis(xScale, zoom)
 
-                    const handleTooltip = (event: Element | EventType) => {
+                    function handleTooltip(event: Element | EventType) {
                         if (!data || !rescaledXAxis || !yScale) {
                             return;
                         }
@@ -127,37 +123,28 @@ export default function StackChart({
                         showTooltip({
                             tooltipData: timeFormat('%c')(x0),
                             tooltipLeft: x,
-                            // tooltipTop: [getTempValue1(d0), getTempValue2(d1)],
                             tooltipTop: getTempValue1(d0),
                         });
-                    };
+                    }
 
                     return (
                         // @ts-ignore TS is bitching about the ref
                         <svg width={width} height={height} ref={zoom.containerRef}>
-                            {/*<g transform={`translate(${margin.left}, ${margin.top})`}>*/}
                             <Group left={margin.left} top={margin.top}>
                                 <RectClipPath
                                     id="zoom-clip"
-                                    // x={margin.left}
-                                    y={margin.bottom}
                                     width={xMax}
                                     height={yMax}/>
                                 <AxisLeft
                                     scale={yScale}
                                     label={"Temperature"}
-                                    // left={margin.left}
                                 />
                                 <AxisBottom
                                     scale={rescaledXAxis}
                                     top={height - margin.top - margin.bottom}
-                                    // left={margin.left}
-
                                 />
                                 <GradientPinkBlue id="stacked-pink-blue"/>
                                 <AreaStack
-                                    // top={margin.top}
-                                    // left={100000000000000000}
                                     keys={keys}
                                     data={data}
                                     x={(d) => rescaledXAxis(getDate(d.data))}
@@ -176,7 +163,6 @@ export default function StackChart({
                                                     if (events) alert(`${stack.key}`);
                                                 }}
                                                 clipPath="url(#zoom-clip)"
-                                                // transform={`translate(${margin.left}, 0)`}
                                             />
                                         ))
                                     }
@@ -185,21 +171,16 @@ export default function StackChart({
                                     width={xMax}
                                     height={yMax}
                                     fill="transparent"
-                                    rx={0}
                                     onMouseMove={handleTooltip}
                                     onMouseLeave={() => hideTooltip()}
-                                    // transform={'translate(0, 0)'}
                                 />
                                 {tooltipData && <Line
                                     from={{x: (tooltipLeft || 0), y: 0}}
                                     to={{x: (tooltipLeft || 0), y: yMax}}
-                                    // from={{x: (tooltipLeft || 0) - margin.left, y: 0}}
-                                    // to={{x: (tooltipLeft || 0) - margin.left, y: yMax}}
                                     stroke={'black'}
                                     strokeWidth={1}
                                     pointerEvents="none"
                                     strokeDasharray="5,2"
-                                    // transform={"translate(-50, 0)"}
                                 />}
                             </Group>
                         </svg>)
@@ -209,9 +190,7 @@ export default function StackChart({
                 <div>
                     <TooltipWithBounds
                         key={Math.random()}
-                        // top={tooltipTop}
                         left={tooltipLeft}
-                        // style={tooltipStyles}
                     >
                         <div style={{display: "flex", flexDirection: "column", gap: "5px"}}>
                             <div>
