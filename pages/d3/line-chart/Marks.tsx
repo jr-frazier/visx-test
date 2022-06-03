@@ -17,15 +17,16 @@ export default function Marks({ data, yScale, xScale, xValue, yValue, toolTipFor
 
 
     return (
-        <>  
+        <>
             <path d={line().x((d: [number, number]) => xScale(xValue(d))).y(d=> yScale(yValue(d))).curve(curveNatural)(data)} stroke='teal' fill='none' strokeWidth={3} strokeLinejoin={'round'} strokeLinecap={'round'}/>
-            {/* {data.map((d: Data, index) => {
-                return (
-                    <circle key={index} fill={'teal'} cx={xScale(xValue(d))} cy={yScale(yValue(d))} r={circleRadius}>
-                        <title>{toolTipFormat(xValue(d))}</title>
-                    </circle>
-                );
-            })} */}
+            {/* Uncomment the code below to display all data points in the line chart */}
+            {/*{data.map((d: Data, index) => {*/}
+            {/*    return (*/}
+            {/*        <circle key={index} fill={'teal'} cx={xScale(xValue(d))} cy={yScale(yValue(d))} r={circleRadius}>*/}
+            {/*            <title>{toolTipFormat(xValue(d))}</title>*/}
+            {/*        </circle>*/}
+            {/*    );*/}
+            {/*})}*/}
         </>
     );
 }

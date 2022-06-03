@@ -1,6 +1,6 @@
 import React from 'react';
 import {AreaStack, Line} from '@visx/shape';
-import {curveCardinal} from '@visx/curve'
+import {curveCardinal, curveStepAfter} from '@visx/curve'
 import {GradientPinkBlue} from '@visx/gradient';
 import {TooltipWithBounds, useTooltip} from '@visx/tooltip';
 import {scaleLinear, scaleUtc, scaleTime} from '@visx/scale';
@@ -98,14 +98,21 @@ export default function StackChart({
         return scale.copy().domain(newDomain)
     }
 
+    function handleWheel(event: WheelEvent | React.WheelEvent<Element>) {
+        console.log("Wheel Event", event)
+
+        return [event.x, event.y]
+    }
+
     return width < 10 ? null : (
         <div style={{border: '1px solid black', marginTop: '20px', marginLeft: margin.left}}>
             <Zoom
                 width={width}
                 height={height}
-                scaleXMin={1}
+                scaleXMin={0.5}
                 scaleXMax={4}
-            >
+                // wheelDelta={(e) => handleWheel(e)}
+            >npm
                 {(zoom) => {
                     const rescaledXAxis = rescaleXAxis(xScale, zoom)
 
@@ -163,7 +170,7 @@ export default function StackChart({
                                     x={(d) => rescaledXAxis(getDate(d.data))}
                                     y0={(d) => yScale(getY0(d)) ?? 0}
                                     y1={(d) => yScale(getY1(d)) ?? 0}
-                                    curve={curveCardinal}
+                                    curve={curveStepAfter}
                                 >
                                     {({stacks, path}) =>
                                         stacks.map((stack, i) => (
