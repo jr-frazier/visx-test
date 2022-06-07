@@ -45,8 +45,8 @@ const parseDate = timeParse('%Y-%m-%d');
 export const background = 'blue';
 
 const getDate = (d: Data) => (parseDate(d.date) || 0).valueOf();
-const getY0 = (d: SeriesPoint<Data>) => d[0] / 1;
-const getY1 = (d: SeriesPoint<Data>) => d[1] / 1;
+const getY0 = (d: SeriesPoint<Data>) => d[0] / 100;
+const getY1 = (d: SeriesPoint<Data>) => d[1] / 100;
 
 interface Props {
     width: number;
